@@ -10,8 +10,7 @@
                         :key="navItem.title" 
                         :to="navItem.to"
                         color="primary"
-                        link
-                        exact>
+                        link>
                             <v-list-item-icon>
                                 <v-icon>{{ navItem.icon }}</v-icon>
                             </v-list-item-icon>
@@ -91,7 +90,7 @@
         </v-main>
 
         <v-footer app inset color="white" flat style="border-top: thin solid rgba(0, 0, 0, 0.12) !important;">
-            <div class="text-caption">&#169;2020 Slamm Technologies</div>
+            <div class="text-caption">&#169;{{ year }} {{ settings.business.legalName }} All rights reserved.</div>
         </v-footer>
     </v-app>
 </template>
@@ -102,7 +101,7 @@
 
     import Notification from '@/components/Notification.vue';
 
-    import { mapState, mapGetters } from 'vuex';
+    import { mapState } from 'vuex';
 
     export default {
         name: 'DashboardLayout',
@@ -123,20 +122,20 @@
                         to: '/companies',
                     },
                     {
-                        title: 'Courses',
-                        icon: 'mdi-book-open-outline',
-                        to: '/courses',
-                    },
-                    {
                         title: 'Plans',
                         icon: 'mdi-wallet-outline',
                         to: '/plans',
                     },
                     {
+                        title: 'Courses',
+                        icon: 'mdi-book-open-outline',
+                        to: '/courses',
+                    },
+                    {
                         title: 'Settings',
                         icon: 'mdi-cog-outline',
                         to: '/settings',
-                    }
+                    },
                 ],
                 
                 isShowingNavDrawer: null,
@@ -145,7 +144,11 @@
         computed: {
             ...mapState([
                 'admin',
+                'settings',
             ]),
+            year() {
+                return new Date().getFullYear();
+            }
         },
         methods: {
             async logout() {
@@ -173,9 +176,12 @@
             }
         },
         created() {
+            this.$store.dispatch('initializeSettings');
+            
             firebase.auth().onAuthStateChanged(user => {
                 if (user) {
-                    this.$store.dispatch('initialize', { user });
+                    this.$store.dispatch('initializeAdmin', { user });
+                    this.$store.dispatch('initializeDocumentCounters');
                 } else {
                     this.$store.dispatch('clear');
                 }
@@ -191,6 +197,9 @@
     }
     .plain-background {
         background-color: #32527910 !important;
+    }
+    .ql-editor{
+        min-height: 200px;
     }
 </style>
 

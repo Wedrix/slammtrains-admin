@@ -10,86 +10,141 @@ import 'firebase/firestore';
 
 Vue.use(VueRouter);
 
-const guardedValidation = (to, from, next) => {
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      user.getIdTokenResult().then(result => {
-        if (result.claims.accessLevel === 'admin') {
-          next();
-        } else {
-          next({path: '/signin', query: { unauthorized: true }});
-        }
-      });
-    } else {
-      next('/signin');
-    }
-  });
-};
-
-const guestValidation = (to, from, next) => {
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      user.getIdTokenResult().then(result => {
-        if (result.claims.accessLevel === 'admin') {
+const makeGuard = (guardType) => {
+  return (to, from, next) => {
+    firebase.auth().onAuthStateChanged(async user => {
+      if (guardType === 'guest') {
+        if (user) {
           next('/');
-        } else {
+        }
+        else {
           next();
         }
-      });
-    } else {
-      next();
-    }
-  });
+      }
+
+      if (guardType === 'authenticated') {
+        if (user) {
+          next();
+        }
+        else {
+          next('/auth');
+        }
+      }
+
+      if (guardType === 'authenticatedAdmin') {
+        if (user) {
+          const idToken = await user.getIdTokenResult();
+
+          const accessLevel = idToken.claims.accessLevel;
+
+          if (accessLevel === 'admin') {
+            next();
+          }
+          else {
+            next('/auth/unauthorized');
+          }
+        } 
+        else {
+          next('/auth');
+        }
+      }
+    });
+  };
 };
-
-const guardedRoutes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: () => import('../views/pages/Home.vue')
-  },
-  {
-    path: 'companies',
-    name: 'Companies',
-    component: () => import('../views/pages/Companies.vue')
-  },
-  {
-    path: 'courses',
-    name: 'Courses',
-    component: () => import('../views/pages/Courses.vue')
-  },
-  {
-    path: 'plans',
-    name: 'Plans',
-    component: () => import('../views/pages/Plans.vue')
-  },
-  {
-    path: 'settings',
-    name: 'Settings',
-    component: () => import('../views/pages/Settings.vue')
-  }
-];
-
-const authRoutes = [
-  {
-    path: '/signin',
-    name: 'SignInPage',
-    component: () => import('../views/pages/SignIn.vue'),
-    beforeEnter: guestValidation
-  },
-];
 
 const routes = [
   {
     path: '/auth',
     component: PlainLayout,
-    children: authRoutes
+    children: [
+      {
+        path: '/',
+        name: 'Auth',
+        component: () => import('@/views/pages/Auth.vue'),
+        beforeEnter: makeGuard('guest'),
+      },
+      {
+        path: 'unauthorized',
+        name: 'Unauthorized',
+        component: () => import('@/views/pages/Unauthorized.vue'),
+        beforeEnter: makeGuard('authenticated'),
+      },
+    ],
   },
   {
     path: '/',
     component: DashboardLayout,
-    children: guardedRoutes,
-    beforeEnter: guardedValidation
+    children: [
+      {
+        path: '/',
+        name: 'Home',
+        component: () => import('@/views/pages/Home.vue')
+      },
+      {
+        path: 'companies',
+        component: () => import('@/views/pages/Companies.vue'),
+        children: [
+          {
+            path: '/',
+            name: 'CompaniesIndex',
+            component: () => import('@/views/pages/Companies/Index.vue'),
+          },
+          {
+            path: 'broadcast-email',
+            name: 'BroadcastEmail',
+            component: () => import('@/views/pages/Companies/BroadcastEmail.vue'),
+          },
+        ],
+      },
+      {
+        path: 'courses',
+        component: () => import('@/views/pages/Courses.vue'),
+        children: [
+          {
+            path: '/',
+            name: 'CoursesIndex',
+            component: () => import('@/views/pages/Courses/Index.vue'),
+          },
+          {
+            path: 'requests',
+            name: 'IndexCourseRequests',
+            component: () => import('@/views/pages/Courses/Requests.vue')
+          },
+          {
+            path: 'create',
+            name: 'CreateCourse',
+            component: () => import('@/views/pages/Courses/Create.vue')
+          },
+        ],
+      },
+      {
+        path: 'plans',
+        component: () => import('@/views/pages/Plans.vue'),
+        children: [
+          {
+            path: '/',
+            name: 'PlansIndex',
+            component: () => import('@/views/pages/Plans/Index.vue'),
+          },
+          {
+            path: 'create',
+            name: 'CreatePlan',
+            component: () => import('@/views/pages/Plans/Create.vue'),
+          },
+          {
+            path: 'requests',
+            name: 'IndexCustomPlanRequests',
+            component: () => import('@/views/pages/Plans/Requests.vue')
+          },
+        ],
+      },
+      {
+        path: 'settings',
+        name: 'Settings',
+        component: () => import('@/views/pages/Settings.vue')
+      }
+    ],
+    beforeEnter: makeGuard('authenticatedAdmin'),
   }
 ];
 
