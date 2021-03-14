@@ -78,7 +78,7 @@ const routes = [
       {
         path: '/',
         name: 'Home',
-        component: () => import('@/views/pages/Home.vue')
+        component: () => import('@/views/pages/Home.vue'),
       },
       {
         path: 'companies',
@@ -106,14 +106,19 @@ const routes = [
             component: () => import('@/views/pages/Courses/Index.vue'),
           },
           {
+            path: 'drafts',
+            name: 'IndexCourseDrafts',
+            component: () => import('@/views/pages/Courses/Drafts.vue'),
+          },
+          {
             path: 'requests',
             name: 'IndexCourseRequests',
-            component: () => import('@/views/pages/Courses/Requests.vue')
+            component: () => import('@/views/pages/Courses/Requests.vue'),
           },
           {
             path: 'create',
             name: 'CreateCourse',
-            component: () => import('@/views/pages/Courses/Create.vue')
+            component: () => import('@/views/pages/Courses/Create.vue'),
           },
         ],
       },
@@ -134,14 +139,14 @@ const routes = [
           {
             path: 'requests',
             name: 'IndexCustomPlanRequests',
-            component: () => import('@/views/pages/Plans/Requests.vue')
+            component: () => import('@/views/pages/Plans/Requests.vue'),
           },
         ],
       },
       {
         path: 'settings',
         name: 'Settings',
-        component: () => import('@/views/pages/Settings.vue')
+        component: () => import('@/views/pages/Settings.vue'),
       }
     ],
     beforeEnter: makeGuard('authenticatedAdmin'),

@@ -55,9 +55,6 @@
 </template>
 
 <script>
-    import firebase from '@/firebase';
-    import 'firebase/firestore';
-
     export default {
         name: 'Courses',
         data() {
@@ -77,6 +74,7 @@
                         title: 'Drafts',
                         icon: 'mdi-file-outline',
                         to: '/courses/drafts',
+                        totalCount: this.courseDraftsTotalCount,
                     },
                     {
                         title: 'Add A Course',
@@ -93,6 +91,9 @@
             },
             courseRequestsTotalCount() {
                 return this.$store.state.documentCounters.courseRequests;
+            },
+            courseDraftsTotalCount() {
+                return this.$store.state.documentCounters.courseDrafts;
             }
         },
     };

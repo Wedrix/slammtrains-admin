@@ -251,12 +251,6 @@
                             </v-card>
                         </v-col>
                         <v-col cols="12" md="6">
-                            <v-toolbar 
-                                flat
-                                outlined
-                                class="rounded-t">
-                                    <v-toolbar-title class="primary--text">Transactions</v-toolbar-title>
-                            </v-toolbar>
                             <v-data-table
                                 :headers="headers"
                                 :items="transactions"
@@ -287,6 +281,11 @@
                                     </template>
                                     <template v-slot:[`item.createdAt`]="{ item }">
                                         {{ formatDate(item.createdAt, 'verbose') }}
+                                    </template>
+                                    <template v-slot:top>
+                                        <div class="table-top px-6 py-4">
+                                            <div class="headline primary--text">Transactions</div>
+                                        </div>
                                     </template>
                             </v-data-table>
                         </v-col>

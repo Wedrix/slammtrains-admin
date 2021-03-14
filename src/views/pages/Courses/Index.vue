@@ -73,13 +73,13 @@
                 <template v-slot:default="props">
                     <v-row>
                         <v-col
-                            v-for="item in props.items"
-                            :key="item.id"
+                            v-for="course in props.items"
+                            :key="course.id"
                             cols="12"
                             sm="6"
                             md="4"
                             lg="3">
-                                <course-swatch :course="item"/>
+                                <course-swatch :course="course" @click="showCourseOverview(course)"/>
                         </v-col>
                     </v-row>
                 </template>
@@ -99,6 +99,11 @@
                     </div>
                 </template>
         </v-data-iterator>
+        <v-dialog
+            v-model="isShowingCourseOverviewDialog"
+            max-width="800">
+                <course-overview :course="shownCourseForOverview"/>
+        </v-dialog>
     </div>
 </template>
 
@@ -110,7 +115,8 @@
     import { cloneDeep } from 'lodash';
     import { debounce } from 'debounce';
 
-    import CourseSwatch from '@/components/CourseSwatch';
+    import CourseSwatch from '@/components/CourseSwatch.vue';
+    import CourseOverview from '@/components/CourseOverview.vue';
 
     const init = {
         search: {
@@ -132,7 +138,8 @@
     export default {
         name: 'Courses',
         components: {
-            'course-swatch': CourseSwatch,
+            CourseSwatch,
+            CourseOverview,
         },
         data() {
             return {
@@ -143,6 +150,9 @@
                 isReloadingCourses: false,
                 
                 search: cloneDeep(init.search),
+
+                isShowingCourseOverviewDialog: false,
+                shownCourseForOverview: null,
             };
         },
         computed: {
@@ -249,6 +259,11 @@
 
                                     return courses;
                                 });
+            },
+            showCourseOverview(course) {
+                this.shownCourseForOverview = course;
+
+                this.isShowingCourseOverviewDialog = true;
             }
         }
     };

@@ -1,22 +1,37 @@
 <template>
     <v-form ref="addCourseForm" @submit.prevent="validateCreateCourseForm() && addCourse()">
         <v-sheet color="transparent">
-            <v-toolbar
-                dark
-                extended
-                rounded
-                color="primary">
-                    <v-toolbar-title class="text-h5">
-                        New Course
-                    </v-toolbar-title>
-                    <template v-slot:extension>
-                        <v-spacer/>
-                        <v-btn light color="white" class="mr-4">Discard</v-btn>
-                        <v-btn light color="secondary" class="mr-4" type="submit" :loading="isAddingCourse">Create</v-btn>
-                    </template>
-            </v-toolbar>
-            
             <v-stepper v-model="step" vertical>
+                <v-stepper-header style="box-shadow:none;">
+                    <v-toolbar
+                        flat
+                        rounded
+                        color="white">
+                            <v-toolbar-title class="headline primary--text">
+                                New Course
+                            </v-toolbar-title>
+                            <v-spacer/>
+                            <v-btn 
+                                color="primary" 
+                                class="mr-4" 
+                                @click="saveDraft()" 
+                                :loading="isSavigDraft"
+                                :disabled="!dataEntered" 
+                                outlined>
+                                    {{ this.draftId ? 'Save Draft' : 'Save As Draft'}}
+                            </v-btn>
+                            <v-btn 
+                                color="secondary" 
+                                class="mr-4" 
+                                type="submit" 
+                                :loading="isAddingCourse">
+                                    Create Course
+                            </v-btn>
+                    </v-toolbar>
+                </v-stepper-header>
+
+                <v-divider/>
+
                 <v-stepper-step 
                     :complete="step > 1" 
                     :editable="true"
@@ -56,12 +71,21 @@
                             </v-col>
                             <v-col md="1"/>
                             <v-col cols="12" md="4">
-                                <image-picker directory="courses/thumbnails" 
-                                    label="Thumbnail"
-                                    aspect-ratio="3:2"
-                                    @uploading-image="isUploadingImage = true;"
-                                    @error-uploading-image="isUploadingImage = false;"
-                                    @image-upload-successful="newCourse.thumbnail = $event; isUploadingImage = false;"/>
+                                <v-input
+                                    v-model="newCourse.thumbnail"
+                                    :rules="[required]"
+                                    required
+                                    class="block-input">
+                                        <image-picker style="height:100%;width:100%;"
+                                            directory="courses/thumbnails" 
+                                            label="Course Thumbnail"
+                                            aspect-ratio="3:2"
+                                            :initial-image="newCourse.thumbnail"
+                                            @uploading-image="isUploadingImage = true;"
+                                            @error-uploading-image="isUploadingImage = false;"
+                                            @image-upload-successful="newCourse.thumbnail = $event; isUploadingImage = false;"
+                                            @image-deletion-successful="newCourse.thumbnail = $event;"/>
+                                </v-input>
                             </v-col>
                         </v-row>
                 </v-stepper-content>
@@ -305,16 +329,6 @@
                                                                                 }
                                                                             ]"/>
 
-                                                                        <v-text-field
-                                                                            v-model.number="newLesson.durationInSeconds"
-                                                                            label="Duration (seconds)"
-                                                                            type="number"
-                                                                            :rules="newLesson.contentType === 'video' 
-                                                                                ? [required, min(1), max(newLesson.content.video.durationInSeconds)]
-                                                                                : [required, min(1)]"
-                                                                            required
-                                                                            :disabled="newLesson.contentType === 'questions'"/>
-
                                                                         <template v-if="newLesson.contentType === 'video'">
                                                                             <video v-if="newLesson.content.video.blobUrl"
                                                                                 :src="newLesson.content.video.blobUrl"
@@ -490,6 +504,16 @@
                                                                                 </v-card>
                                                                             </template>
                                                                         </template>
+
+                                                                        <v-text-field
+                                                                            v-model.number="newLesson.durationInSeconds"
+                                                                            label="Duration (seconds)"
+                                                                            type="number"
+                                                                            :rules="newLesson.contentType === 'video' 
+                                                                                ? [required, min(1), max(newLesson.content.video.durationInSeconds)]
+                                                                                : [required, min(1)]"
+                                                                            required
+                                                                            :disabled="newLesson.contentType === 'questions'"/>
                                                                     </v-card-text>
                                                                     <v-card-actions>
                                                                         <v-btn 
@@ -559,7 +583,11 @@
             name: '',
             description: '',
             overview: '',
-            thumbnail: null,
+            thumbnail: {
+                src: '',
+                fileName: '',
+                fullPath: '',
+            },
             modules: [],
         },
         newModule: {
@@ -591,6 +619,16 @@
             explanation: '',
             durationInSeconds: null,
         }
+    };
+
+    const match = (a, b) => {
+        return JSON.stringify(a) === JSON.stringify(b);
+    };
+
+    const beforeUnloadListener = event => {
+        event.preventDefault();
+
+        return event.returnValue = "You have some unsaved changes. Are you sure you want to leave?";
     };
 
     export default {
@@ -645,7 +683,15 @@
                     video: 'mdi-video',
                     questions: 'mdi-help-circle',
                 },
+                draftId: null,
+                isSavingDraft: false,
+                draftSaved: false,
             };
+        },
+        computed: {
+            dataEntered() {
+                return !match(this.newCourse, init.newCourse);
+            }
         },
         watch: {
             'newLesson.content.video.file': {
@@ -668,7 +714,15 @@
                         this.newLesson.content.video.blobUrl = '';
                     }
                 }
-            }
+            },
+            dataEntered(dataEntered) {
+                if (dataEntered) {
+                    addEventListener('beforeunload', beforeUnloadListener, { capture: true });
+                }
+                else {
+                    removeEventListener('beforeunload', beforeUnloadListener, { capture: true });
+                }
+            },
         },
         methods: {
             validateCreateCourseForm() {
@@ -697,14 +751,19 @@
 
                     const courseData = cloneDeep(this.newCourse);
 
+                    delete courseData.createdAt;
+
                     await addCourse({ courseData });
+
+                    await this.deleteDraft();
 
                     this.newCourse = cloneDeep(init.newCourse);
                     this.$refs.addCourseForm.resetValidation();
                     this.step = 1;
 
                     this.$router.push('/courses');
-                } catch (error) {
+                } 
+                catch (error) {
                     this.$store.commit('push_notification', { 
                         notification: {
                             message: error.message,
@@ -800,12 +859,12 @@
                             }
                         });
 
-                        const downloadUrl = await uploadTask.snapshot.ref.getDownloadURL();
+                        const src = await uploadTask.snapshot.ref.getDownloadURL();
 
                         const upload = {
                             fileName: file.name,
                             fullPath: ref,
-                            src: downloadUrl,
+                            src,
                         }
                         
                         resolve(upload);
@@ -897,7 +956,75 @@
                                         }, 0);
 
                 return moduleDuration;
-            }
+            },
+            async loadDraft() {
+                const draftId = this.$route.query.draftId;
+
+                if (draftId) {
+                    this.draftId = draftId;
+
+                    const courseDraft = (await firebase.firestore()
+                                                    .doc(`courseDrafts/${draftId}`)
+                                                    .get())
+                                                    .data();
+
+                    this.newCourse = courseDraft;
+                }
+            },
+            async saveDraft() {
+                this.isSavingDraft = true;
+            
+                if (this.draftId) {
+                    await firebase.firestore()
+                                .doc(`courseDrafts/${this.draftId}`)
+                                .set({
+                                    ...this.newCourse,
+                                });
+                }
+                else {
+                    const courseDraftRef = await firebase.firestore()
+                                                        .collection(`courseDrafts`)
+                                                        .add({
+                                                            ...this.newCourse,
+                                                            createdAt: new Date().valueOf(),
+                                                        });
+
+                    this.draftId = courseDraftRef.id;
+                }
+
+                this.isSavingDraft = false;
+
+                this.draftSaved = true;
+
+                this.$router.push('/courses');
+            },
+            async deleteDraft() {
+                if (this.draftId) {
+                    try {
+                        await firebase.firestore()
+                                    .doc(`courseDrafts/${this.draftId}`)
+                                    .delete();
+                    } 
+                    catch (error) {
+                        this.$store.commit('push_notification', { 
+                            notification: {
+                                message: error.message,
+                                context: 'error',
+                            }
+                        });
+                    }
+                }
+            },
+        },
+        mounted() {
+            this.loadDraft();
+        },
+        beforeRouteLeave(to, from, next) {
+            if (!this.dataEntered || this.draftSaved || confirm("You have some unsaved changes. Are you sure you want to leave?")) {
+                removeEventListener('beforeunload', beforeUnloadListener, { capture: true });
+                
+                return next();
+            };
         },
         filters: {
             toTimer(durationInSeconds) {

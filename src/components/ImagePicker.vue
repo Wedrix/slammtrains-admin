@@ -1,6 +1,8 @@
 <template>
-    <slim :options="options" :key="refreshKey" :initial-image="image.src">
-        <input type="file" name="image" ref="image"/>
+    <slim 
+        :options="options"
+        :key="refreshKey" :initial-image="image.src">
+            <input type="file" name="image" ref="image"/>
     </slim>
 </template>
 
@@ -14,9 +16,15 @@
     import { cloneDeep } from 'lodash';
 
     const init = {
-        src: '',
-        filename: '',
-        fullPath: ''
+        image: {
+            src: '',
+            fileName: '',
+            fullPath: ''
+        },
+    };
+        
+    const match = (a, b) => {
+        return JSON.stringify(a) === JSON.stringify(b);
     };
 
     export default {
@@ -36,11 +44,15 @@
             aspectRatio: {
                 type: String,
                 default: '1:1'
+            },
+            initialImage: {
+                type: Object,
+                default: cloneDeep(init.image),
             }
         },
         data() {
             return {
-                image: cloneDeep(init),
+                image: cloneDeep(init.image),
 
                 options: {
                     ratio: this.aspectRatio,
@@ -83,11 +95,15 @@
                         });
                     },
                     didRemove: removedImage => {
+                        this.$emit('deleting-image');
+
                         const storageRef = firebase.storage().ref();
 
                         storageRef.child(this.image.fullPath)
                                 .delete()
                                 .catch(error => {
+                                    this.$emit('error-deleting-image');
+
                                     const notification = {
                                         message: error.message,
                                         context: 'error',
@@ -96,7 +112,11 @@
                                     this.$store.commit('push_notification', { notification });
                                 });
 
-                        this.image = cloneDeep(init);
+                        const image = cloneDeep(init.image);
+
+                        this.$emit('image-deletion-successful', image);
+
+                        this.image = image;
                     },
                     serviceFormat: 'file',
                     instantEdit: true,
@@ -106,5 +126,15 @@
                 refreshKey: 0,
             };
         },
+        watch: {
+            'initialImage': {
+                immediate: true,
+                handler(initialImage) {
+                    if (!match(initialImage, this.image)) {
+                        this.image = cloneDeep(initialImage);
+                    }
+                }
+            }
+        }
     };
 </script>
